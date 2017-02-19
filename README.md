@@ -1,2 +1,2 @@
 # node-zookeeper-recipes
-Implement lock recipe via node-zookeeper-utils
+Implement lock recipe via node-zookeeper-client
