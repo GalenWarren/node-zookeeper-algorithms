@@ -1,7 +1,7 @@
 {
-  "name": "node-zookeeper-lock",
+  "name": "node-zookeeper-recipes",
   "version": "0.0.1",
-  "description": "Implement lock recipe via node-zookeeper-client",
+  "description": "Implement recipes via node-zookeeper-client",
   "main": "dist/index.js",
   "scripts": {
     "start": "npm run dev",
