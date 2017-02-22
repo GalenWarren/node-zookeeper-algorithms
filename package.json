@@ -1,7 +1,7 @@
 {
   "name": "node-zookeeper-recipes",
   "version": "0.0.1",
-  "description": "Implement recipes via node-zookeeper-client",
+  "description": "Implement Zookeeper recipes via node-zookeeper-client",
   "main": "dist/index.js",
   "scripts": {
     "start": "npm run test:watch",
