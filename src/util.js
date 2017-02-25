@@ -1,8 +1,7 @@
 import uuid from 'uuid/v4';
-import { Exception } from 'node-zookeeper-client';
+import { CreateMode, Exception } from 'node-zookeeper-client';
 import { Observable } from 'rxjs';
-
-// import pify from 'pify';
+import pify from 'pify';
 import { InvalidNodeComponentError } from './errors';
 
 /**
@@ -41,7 +40,7 @@ export function validateNodeComponent(component) {
 * @param {string} [options.typeId='none'] - Type id
 * @returns {string}
 */
-export function getClientNodePrefix(options = {}) {
+export function getClientNodePrefix(options) {
   const { clientId, typeId = defaultId, groupId = defaultId } = options;
   return [typeId, groupId, clientId, '']
     .map(validateNodeComponent)
@@ -93,8 +92,7 @@ export function handleRecoverableExceptions(error$, options = {}) {
 * @param {string} options.clientNodePrefix - The prefix of the client node
 * @returns {string}
 */
-/*
-export async function findClientNode(options = {}) {
+export async function findClientNode(options) {
   const { client, basePath, clientNodePrefix } = options;
 
   // load all the current children and return the one that matches,
@@ -102,7 +100,6 @@ export async function findClientNode(options = {}) {
   const children = await pify(client.getChildren).call(client, basePath);
   return children.find(child => child.startsWith(clientNodePrefix));
 }
-*/
 
 /**
 * Creates a client node, returns promise that is resolved with the node name
@@ -112,15 +109,13 @@ export async function findClientNode(options = {}) {
 * @param {string} options.clientNodePrefix - The prefix of the client node
 * @returns {string}
 */
-/*
-export function createClientNode(options = {}) {
+export function createClientNode(options) {
   const { client, basePath, clientNodePrefix } = options;
 
   // create the node
   const path = [basePath, clientNodePrefix].join('/');
   return pify(client.create).call(client, path, null, CreateMode.EPHEMERAL_SEQUENTIAL);
 }
-*/
 
 /**
 * Creates a client node, returns an observable that will produce the newly created
