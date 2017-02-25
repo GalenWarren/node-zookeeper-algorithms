@@ -7,7 +7,7 @@ import {
   getClientNodePrefix,
   validateNodeComponent,
   createClientNode,
-  handleNotifications,
+  handleRecoverableExceptions,
 } from '../src/util';
 
 import { InvalidNodeComponentError } from '../src/errors';
@@ -42,23 +42,23 @@ describe('util', () => {
     it('should return expected values, including applying defaults', () => {
       getClientNodePrefix({
         clientId: '123',
-      }).should.equal('123-none-none-');
+      }).should.equal('none-none-123-');
 
       getClientNodePrefix({
         clientId: '123',
         typeId: 'abc',
-      }).should.equal('123-abc-none-');
+      }).should.equal('abc-none-123-');
 
       getClientNodePrefix({
         clientId: '123',
         groupId: 'abc',
-      }).should.equal('123-none-abc-');
+      }).should.equal('none-abc-123-');
 
       getClientNodePrefix({
-        clientId: '123',
         typeId: 'ABC',
         groupId: 'abc',
-      }).should.equal('123-ABC-abc-');
+        clientId: '123',
+      }).should.equal('ABC-abc-123-');
     });
 
     it('should fail if an invalid component is supplied', () => {
@@ -69,17 +69,17 @@ describe('util', () => {
 
   });
 
-  describe('handleNotifications', () => {
+  describe('handleRecoverableExceptions', () => {
 
     it('should yield no retries if no retries', async () => {
-      const retryCount = await handleNotifications(
+      const retryCount = await handleRecoverableExceptions(
         Observable.of(),
       ).count().toPromise();
       retryCount.should.equal(0);
     });
 
     it('should yield no retries if the error is SESSION_EXPIRED', async () => {
-      const retryCount = await handleNotifications(
+      const retryCount = await handleRecoverableExceptions(
         Observable.of(Object.assign(new Error(), {
           code: Exception.SESSION_EXPIRED,
         })),
@@ -88,7 +88,7 @@ describe('util', () => {
     });
 
     it('should yield one retry if the error is CONNECTION_LOSS', async () => {
-      const retryCount = await handleNotifications(
+      const retryCount = await handleRecoverableExceptions(
         Observable.of(Object.assign(new Error(), {
           code: Exception.CONNECTION_LOSS,
         })),

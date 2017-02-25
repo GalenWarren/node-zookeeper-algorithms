@@ -4,12 +4,13 @@
   "description": "Implement Zookeeper recipes via node-zookeeper-client",
   "main": "dist/index.js",
   "scripts": {
-    "start": "npm run test:watch",
+    "start": "npm run watch",
     "build": "babel src -d dist",
-    "lint": "gulp lint",
-    "test": "gulp test",
-    "test:watch": "gulp test:watch",
-    "doc": "gulp doc"
+    "doc": "jsdoc src -r -R README.md -c .jsdoc.json",
+    "lint": "eslint -c .eslintrc.json src/**/*.js",
+    "test": "cross-env NODE_ENV=test nyc mocha --compilers js:babel-core/register test/setup.js test/**/*.spec.js",
+    "report": "nyc report --reporter=lcov",
+    "watch": "nodemon --watch src --watch test --exec 'npm run doc && npm run lint && npm run test && npm run report'"
   },
   "repository": {
     "type": "git",
@@ -17,7 +18,8 @@
   },
   "keywords": [
     "zookeeper",
-    "lock"
+    "lock",
+    "recipes"
   ],
   "author": "Galen Warren <galen@cvillewarrens.com>",
   "license": "Apache-2.0",
@@ -27,24 +29,22 @@
   "homepage": "https://github.com/GalenWarren/node-zookeeper-lock#readme",
   "devDependencies": {
     "babel-cli": "^6.23.0",
+    "babel-plugin-istanbul": "^4.0.0",
     "babel-polyfill": "^6.23.0",
     "babel-preset-es2015": "^6.22.0",
     "babel-preset-stage-2": "^6.22.0",
     "chai": "^3.5.0",
+    "cross-env": "^3.1.4",
+    "eslint": "^3.16.1",
     "eslint-config-airbnb": "^14.1.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx-a11y": "^4.0.0",
     "eslint-plugin-react": "^6.10.0",
-    "gulp": "^3.9.1",
-    "gulp-babel": "^6.1.2",
-    "gulp-babel-istanbul": "^1.6.0",
-    "gulp-eslint": "^3.0.1",
-    "gulp-inject-modules": "^1.0.0",
-    "gulp-jsdoc3": "^1.0.1",
-    "gulp-mocha": "^3.0.1",
-    "gulp-util": "^3.0.8",
-    "gulp-watch": "^4.3.11",
+    "jsdoc": "^3.4.3",
     "jsdoc-strip-async-await": "^0.1.0",
+    "mocha": "^3.2.0",
+    "nodemon": "^1.11.0",
+    "nyc": "^10.1.2",
     "sinon": "^1.17.7",
     "sinon-chai": "^2.8.0"
   },

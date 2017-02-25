@@ -1,0 +1,9 @@
+{
+  "opts": {
+    "destination": "./docs"
+  },
+  "plugins": [
+    "plugins/markdown",
+    "node_modules/jsdoc-strip-async-await"
+  ]
+}
