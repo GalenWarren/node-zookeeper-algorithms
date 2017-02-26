@@ -1,160 +1,199 @@
+/* eslint-disable class-methods-use-this */
+import EventEmitter from 'events';
 import uuid from 'uuid/v4';
 import { CreateMode, Exception } from 'node-zookeeper-client';
 import { Observable } from 'rxjs';
 import pify from 'pify';
-import { InvalidNodeComponentError } from './errors';
 
 /**
-* The default id used when one is not specified ('none')
-* @constant {string}
+* A utilities class
 */
-const defaultId = 'none';
+export default class Util {
 
-/**
-* Creates a client id
-* @returns {string} - A unique id (uuid v4 with no dashes)
-*/
-export function createClientId() {
-  return uuid().replace(/-/g, '');
-}
-
-/**
-* Validates that a node component is legitimate, i.e. doesn't contain
-* any dashes.
-* @param {string} component - The component to test
-* @throws {InvalidNodeComponentError} if the component is invalid
-*/
-export function validateNodeComponent(component) {
-  if (component.indexOf('-') >= 0) {
-    throw new InvalidNodeComponentError(component);
+  /**
+  * Creates a client id
+  * @returns {string} - A unique id (uuid v4 with no dashes)
+  */
+  createClientId() {
+    return uuid().replace(/-/g, '');
   }
-  return component;
-}
 
-/**
-* Creates a prefix for a client node, combining client id,
-* group id, type id.
-* @param {Object} options - Options
-* @param {string} options.clientId - Client id
-* @param {string} [options.groupId='none'] - Group id
-* @param {string} [options.typeId='none'] - Type id
-* @returns {string}
-*/
-export function getClientNodePrefix(options) {
-  const { clientId, typeId = defaultId, groupId = defaultId } = options;
-  return [typeId, groupId, clientId, '']
-    .map(validateNodeComponent)
-    .map(encodeURIComponent)
-    .join('-');
-}
+  /**
+  * Creates a prefix for a client node, combining an optional
+  * prefix and client id
+  * @param {Object} options - Options
+  * @param {string} options.clientId - Client id
+  * @param {string} [options.prefix] - Node prefix
+  * @returns {string}
+  */
+  getClientNodePrefix(options) {
+    const { clientId, prefix } = options;
+    const components = [clientId, ''];
+    if (prefix) {
+      components.unshift(prefix);
+    }
+    return components.join('-');
+  }
 
-/**
-* A notification handler to be used by rxjs's retryUntil, implements the
-* rules for recoverable errors for zookeeper. Specifically, this causes
-* zookeeper actions to be retried (with exponential backoff) if
-* CONNECTION_LOSS is returned but treats everything else as fatal.
-* See https://cwiki.apache.org/confluence/display/ZOOKEEPER/FAQ
-* @param {Observable} error$ - The observable of error notifications
-* @param {Object} [options] - The options for the handler
-* @param {number} [options.initialDelay=1000] - The initial retry delays
-* @param {number} [options.maxDelay=8000] - The max delay
-* @param {number} [options.maxRetries=6] - The max number of retries before we give up
-*/
-export function handleRecoverableExceptions(error$, options = {}) {
-  const { initialDelay = 1000, maxDelay = 8000, maxRetries = 6 } = options;
+  /**
+  * A notification handler to be used by rxjs's retryUntil, implements the
+  * rules for recoverable errors for zookeeper. Specifically, this causes
+  * zookeeper actions to be retried (with exponential backoff) if
+  * CONNECTION_LOSS is returned but treats everything else as fatal.
+  * See https://cwiki.apache.org/confluence/display/ZOOKEEPER/FAQ
+  * @param {Observable} error$ - The observable of error notifications
+  * @param {Object} [options] - The options for the handler
+  * @param {number} [options.initialDelay=1000] - The initial retry delays
+  * @param {number} [options.maxDelay=8000] - The max delay
+  * @param {number} [options.maxRetries=6] - The max number of retries before we give up
+  */
+  handleRecoverableExceptions(error$, options = {}) {
+    const { initialDelay = 500, maxDelay = 8000, maxRetries = 7 } = options;
 
-  // this observable will return the sequence of retry delays
-  const delay$ = Observable.generate(
-    0,
-    index => index < maxRetries,
-    index => index + 1,
-    index => Math.min((2 ** index) * initialDelay, maxDelay)
-  );
+    // this observable will return the sequence of retry delays
+    const delay$ = Observable.generate(
+      0,
+      index => index < maxRetries,
+      index => index + 1,
+      index => Math.min((2 ** index) * initialDelay, maxDelay)
+    );
 
-  // retry on connection until we run out of retries
-  return Observable.zip(error$, delay$)
-    .flatMap(([err, delay]) => {
-      switch (err.code) {
-        case Exception.CONNECTION_LOSS:
-          return Observable.of(null).delay(delay);
-        default:
-          return Observable.of();
+    // retry on connection until we run out of retries
+    return Observable.zip(error$, delay$)
+      .flatMap(([err, delay]) => {
+        switch (err.code) {
+          case Exception.CONNECTION_LOSS:
+            return Observable.of(null).delay(delay);
+          default:
+            return Observable.throw(err);
+        }
+      });
+  }
+
+  /**
+  * Finds a client node by id client node, returns a promise that resolves to
+  * the client node
+  * @param {Object} options - Options
+  * @param {ZookeeperClient} options.client - The zookeeper client
+  * @param {string} options.path - The base path at which to look
+  * @param {string} options.clientNodePrefix - The prefix of the client node
+  * @returns {Promise}
+  */
+  async findClientNode(options) {
+    const { client, path, clientNodePrefix } = options;
+
+    // load all the current children and return the one that matches,
+    // or undefined if none match
+    const children = await pify(client.getChildren).call(client, path);
+    const match = children.find(child => child.startsWith(clientNodePrefix));
+    return match ? [path, match].join('/') : match;
+  }
+
+
+  /**
+  * Creates a client node, returns promise that is resolved with the node name
+  * @param {Object} options - Options
+  * @param {ZookeeperClient} options.client - The zookeeper client
+  * @param {string} options.path - The base path at which to look
+  * @param {string} options.clientNodePrefix - The prefix of the client node
+  * @returns {Promise}
+  */
+  createClientNode(options) {
+    const { client, path, clientNodePrefix } = options;
+
+    // create the node
+    const basePath = [path, clientNodePrefix].join('/');
+    return pify(client.create).call(client, basePath, null, CreateMode.EPHEMERAL_SEQUENTIAL);
+  }
+
+  /**
+  * Creates a client node, returns an observable that will produce the newly created
+  * node and then complete (or it will fail if there is an error creating the node)
+  * @param {Object} options - Options
+  * @param {ZookeeperClient} options.client - The zookeeper client
+  * @param {string} options.path - The path under which to create the node
+  * @param {string} [options.prefix] - The node prefix
+  * @param {string} options.clientId - The client id to use
+  * @param {boolean} [options.skipInitialFind=true] - Whether to skip the find
+  * operation on the first iteration, should be set to true except for testing
+  * @returns {Observable}
+  */
+  observeClientNode(options) {
+    const { client, path, clientId, prefix, skipInitialFind = true } = options;
+    const clientNodePrefix = this.getClientNodePrefix({ clientId, prefix });
+
+    // helper to try to find the node. first look for the node, then if not found
+    // try to create it. if skipInitialFind=true, skip the find on the initial
+    // iteration, because we know the client id shouldn't be there. this is really
+    // here primarily for testing ...
+    let skipFind = skipInitialFind;
+    const getClientNode = async () => {
+      let node = null;
+      if (skipFind) {
+        skipFind = false;
+      } else {
+        node = await this.findClientNode({ client, path, clientNodePrefix });
       }
-    });
-}
+      if (!node) {
+        node = await this.createClientNode({ client, path, clientNodePrefix });
+      }
+      return node;
+    };
 
-/**
-* Finds a client node by id client node, returns a promise that resolves to
-* the client node
-* @param {Object} options - Options
-* @param {ZookeeperClientAsync} options.client - The zookeeper client
-* @param {string} options.basePath - The base path at which to look
-* @param {string} options.clientNodePrefix - The prefix of the client node
-* @returns {string}
-*/
-export async function findClientNode(options) {
-  const { client, basePath, clientNodePrefix } = options;
+    // create the an observable that yields the created node
+    return Observable.defer(getClientNode);
+  }
 
-  // load all the current children and return the one that matches,
-  // or undefined if none match
-  const children = await pify(client.getChildren).call(client, basePath);
-  return children.find(child => child.startsWith(clientNodePrefix));
-}
+  /**
+  * Generates an observable of an operation against a node. If watch=false, there
+  * will be exactly one element; otherwise, this is a neverending stream that
+  * resets the watch on every iteration.
+  * @param {Object} options - Options
+  * @param {ZookeeperClient} options.client - The zookeeper client
+  * @param {string} options.path - The parent node path
+  * @param {string} options.method - The method to access the value
+  * @param {boolean} [options.watch=false] - Whether to watch the node
+  * @returns {Observable}
+  */
+  observeNodeValue(options) {
+    const { client, path, method, watch } = options;
+    let changes = null;
 
-/**
-* Creates a client node, returns promise that is resolved with the node name
-* @param {Object} options - Options
-* @param {ZookeeperClientAsync} options.client - The zookeeper client
-* @param {string} options.basePath - The base path at which to look
-* @param {string} options.clientNodePrefix - The prefix of the client node
-* @returns {string}
-*/
-export function createClientNode(options) {
-  const { client, basePath, clientNodePrefix } = options;
+    const value$ = Observable.defer(() => pify(client[method]).call(
+      client,
+      path,
+      watch ? () => changes.emit('change') : null
+    ));
 
-  // create the node
-  const path = [basePath, clientNodePrefix].join('/');
-  return pify(client.create).call(client, path, null, CreateMode.EPHEMERAL_SEQUENTIAL);
-}
-
-/**
-* Creates a client node, returns an observable that will produce the newly created
-* node and then complete (or it will fail if there is an error creating the node)
-* @param {Object} options - Options
-* @param {ZookeeperClientAsync} options.client - The zookeeper client
-* @param {string} options.basePath - The path under which to create the node
-* @param {string} [options.groupId='none'] - Group id
-* @param {string} [options.typeId='none'] - Type id
-* @param {Object} [options.retryOptions] - The custom retry options
-* @returns {string}
-*/
-/*
-export function observeNewClientNode(options = {}) {
-  const { client, basePath, groupId, typeId, retryOptions } = options;
-  const clientId = createClientId();
-  const clientNodePrefix = getClientNodePrefix({ clientId, groupId, typeId });
-
-  // helper to try to find the node. on second and subsequent attempt,
-  // tries to find the node, then on all attempts creates it. this implements
-  // the suggested retry handling for zookeeper recipes, to handle the case
-  // where the node was created on the server but there was some other error
-  // in responding to the client
-  let firstAttempt = true;
-  const getClientNode = async () => {
-    let node = null;
-    if (firstAttempt) {
-      firstAttempt = false;
-    } else {
-      node = await findClientNode({ client, basePath, clientNodePrefix });
+    // if watching, wire up to resubscribe when changes occur
+    if (watch) {
+      changes = new EventEmitter();
+      return value$.repeatWhen(Observable.fromEvent(changes, 'change'));
     }
-    if (!node) {
-      node = await createClientNode({ client, basePath, clientNodePrefix });
-    }
-    return node;
-  };
 
-  // create the node with retry of recoverable errors
-  return Observable.fromPromise(getClientNode)
-    .retryWhen(error$ => handleRecoverableExceptions(error$, retryOptions));
+    // not watching, so just return one-shot value
+    return value$;
+  }
+
+  /**
+  * Observes a node update operation.
+  * @param {Object} options - Options
+  * @param {ZookeeperClient} options.client - The zookeeper client
+  * @param {string} options.path - The parent node path
+  * @param {string} options.method - The method to access the value
+  * @param {boolean} [options.args=[]] - Additional arguments for the update
+  * @returns {Observable}
+  */
+  observeNodeUpdate(options) {
+    const { client, path, method, version, args = [] } = options;
+
+    // perform the update
+    return Observable.defer(() => pify(client[method]).call(
+      client,
+      path,
+      ...args,
+      version
+    ));
+  }
+
 }
-*/

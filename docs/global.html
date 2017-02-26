@@ -92,82 +92,6 @@
     
 
     
-        <h3 class="subsection-title">Members</h3>
-
-        
-            
-<h4 class="name" id="defaultId"><span class="type-signature">(constant) </span>defaultId<span class="type-signature"> :string</span></h4>
-
-
-
-
-<div class="description">
-    <p>The default id used when one is not specified ('none')</p>
-</div>
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">string</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-<dl class="details">
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="util.js.html">util.js</a>, <a href="util.js.html#line11">line 11</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-        
-    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -283,7 +207,7 @@
 
     
 
-    <h4 class="name" id="createClientNode"><span class="type-signature"></span>createClientNode<span class="signature">(options)</span><span class="type-signature"> &rarr; {string}</span></h4>
+    <h4 class="name" id="createClientNode"><span class="type-signature"></span>createClientNode<span class="signature">(options)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -374,7 +298,7 @@
             <td class="type">
             
                 
-<span class="param-type">ZookeeperClientAsync</span>
+<span class="param-type">ZookeeperClient</span>
 
 
             
@@ -391,7 +315,7 @@
 
         <tr>
             
-                <td class="name"><code>basePath</code></td>
+                <td class="name"><code>path</code></td>
             
 
             <td class="type">
@@ -478,7 +402,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="util.js.html">util.js</a>, <a href="util.js.html#line112">line 112</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line101">line 101</a>
     </li></ul></dd>
     
 
@@ -512,7 +436,7 @@
     </dt>
     <dd>
         
-<span class="param-type">string</span>
+<span class="param-type">Promise</span>
 
 
     </dd>
@@ -527,7 +451,7 @@
 
     
 
-    <h4 class="name" id="findClientNode"><span class="type-signature"></span>findClientNode<span class="signature">(options)</span><span class="type-signature"> &rarr; {string}</span></h4>
+    <h4 class="name" id="findClientNode"><span class="type-signature"></span>findClientNode<span class="signature">(options)</span><span class="type-signature"> &rarr; {Promise}</span></h4>
 
     
 
@@ -619,7 +543,7 @@ the client node</p>
             <td class="type">
             
                 
-<span class="param-type">ZookeeperClientAsync</span>
+<span class="param-type">ZookeeperClient</span>
 
 
             
@@ -636,7 +560,7 @@ the client node</p>
 
         <tr>
             
-                <td class="name"><code>basePath</code></td>
+                <td class="name"><code>path</code></td>
             
 
             <td class="type">
@@ -723,7 +647,7 @@ the client node</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="util.js.html">util.js</a>, <a href="util.js.html#line95">line 95</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line82">line 82</a>
     </li></ul></dd>
     
 
@@ -757,7 +681,7 @@ the client node</p>
     </dt>
     <dd>
         
-<span class="param-type">string</span>
+<span class="param-type">Promise</span>
 
 
     </dd>
@@ -779,8 +703,8 @@ the client node</p>
 
 
 <div class="description">
-    <p>Creates a prefix for a client node, combining client id,
-group id, type id.</p>
+    <p>Creates a prefix for a client node, combining an optional
+prefix and client id</p>
 </div>
 
 
@@ -850,8 +774,6 @@ group id, type id.</p>
         
 
         
-        <th>Default</th>
-        
 
         <th class="last">Description</th>
     </tr>
@@ -885,10 +807,6 @@ group id, type id.</p>
             
 
             
-                <td class="default">
-                
-                </td>
-            
 
             <td class="description last"><p>Client id</p></td>
         </tr>
@@ -897,7 +815,7 @@ group id, type id.</p>
 
         <tr>
             
-                <td class="name"><code>groupId</code></td>
+                <td class="name"><code>prefix</code></td>
             
 
             <td class="type">
@@ -922,53 +840,8 @@ group id, type id.</p>
             
 
             
-                <td class="default">
-                
-                    'none'
-                
-                </td>
-            
 
-            <td class="description last"><p>Group id</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>typeId</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-                <td class="default">
-                
-                    'none'
-                
-                </td>
-            
-
-            <td class="description last"><p>Type id</p></td>
+            <td class="description last"><p>Node prefix</p></td>
         </tr>
 
     
@@ -1016,7 +889,7 @@ group id, type id.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="util.js.html">util.js</a>, <a href="util.js.html#line43">line 43</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line29">line 29</a>
     </li></ul></dd>
     
 
@@ -1359,7 +1232,7 @@ See https://cwiki.apache.org/confluence/display/ZOOKEEPER/FAQ</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="util.js.html">util.js</a>, <a href="util.js.html#line63">line 63</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line50">line 50</a>
     </li></ul></dd>
     
 
@@ -1390,15 +1263,15 @@ See https://cwiki.apache.org/confluence/display/ZOOKEEPER/FAQ</p>
 
     
 
-    <h4 class="name" id="validateNodeComponent"><span class="type-signature"></span>validateNodeComponent<span class="signature">(component)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="observeClientNode"><span class="type-signature"></span>observeClientNode<span class="signature">(options)</span><span class="type-signature"> &rarr; {Observable}</span></h4>
 
     
 
 
 
 <div class="description">
-    <p>Validates that a node component is legitimate, i.e. doesn't contain
-any dashes.</p>
+    <p>Creates a client node, returns an observable that will produce the newly created
+node and then complete (or it will fail if there is an error creating the node)</p>
 </div>
 
 
@@ -1434,7 +1307,88 @@ any dashes.</p>
 
         <tr>
             
-                <td class="name"><code>component</code></td>
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Options</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>client</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ZookeeperClient</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The zookeeper client</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>path</code></td>
             
 
             <td class="type">
@@ -1447,10 +1401,141 @@ any dashes.</p>
             </td>
 
             
+                <td class="attributes">
+                
 
+                
+
+                
+                </td>
             
 
-            <td class="description last"><p>The component to test</p></td>
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The path under which to create the node</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>prefix</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The node prefix</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>clientId</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The client id to use</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>skipInitialFind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    true
+                
+                </td>
+            
+
+            <td class="description last"><p>Whether to skip the find
+operation on the first iteration, should be set to true except for testing</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -1491,7 +1576,7 @@ any dashes.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="util.js.html">util.js</a>, <a href="util.js.html#line27">line 27</a>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line121">line 121</a>
     </li></ul></dd>
     
 
@@ -1512,35 +1597,1084 @@ any dashes.</p>
 
 
 
-<h5>Throws:</h5>
+
+
+<h5>Returns:</h5>
 
         
 
+
 <dl>
     <dt>
-        <div class="param-desc">
-        <p>if the component is invalid</p>
-        </div>
+        Type
     </dt>
-    <dd></dd>
-    <dt>
-        <dl>
-            <dt>
-                Type
-            </dt>
-            <dd>
+    <dd>
+        
+<span class="param-type">Observable</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="observeExclusiveLock"><span class="type-signature"></span>observeExclusiveLock<span class="signature">(options)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    <p>Attempts to acquire an exclusive lock at the provided node and
+returns an observable of lock states</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
                 
-<span class="param-type"><a href="InvalidNodeComponentError.html">InvalidNodeComponentError</a></span>
+<span class="param-type">Object</span>
 
 
-            </dd>
-        </dl>
-    </dt>
-    <dd></dd>
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Options</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>client</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ZookeeperClient</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>The zookeeper client</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>path</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>The path under which to create the node</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>key</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>The key to lock (optional)</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="lock.js.html">lock.js</a>, <a href="lock.js.html#line20">line 20</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
 </dl>
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
     
+
+    <h4 class="name" id="observeNodeUpdate"><span class="type-signature"></span>observeNodeUpdate<span class="signature">(options)</span><span class="type-signature"> &rarr; {Observable}</span></h4>
+
+    
+
+
+
+<div class="description">
+    <p>Observes a node update operation.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Options</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>client</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ZookeeperClient</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The zookeeper client</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>path</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The parent node path</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>method</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The method to access the value</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>args</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    []
+                
+                </td>
+            
+
+            <td class="description last"><p>Additional arguments for the update</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line187">line 187</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Observable</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="observeNodeValue"><span class="type-signature"></span>observeNodeValue<span class="signature">(options)</span><span class="type-signature"> &rarr; {Observable}</span></h4>
+
+    
+
+
+
+<div class="description">
+    <p>Generates an observable of an operation against a node. If watch=false, there
+will be exactly one element; otherwise, this is a neverending stream that
+resets the watch on every iteration.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Options</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>client</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">ZookeeperClient</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The zookeeper client</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>path</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The parent node path</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>method</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The method to access the value</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>watch</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">boolean</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    false
+                
+                </td>
+            
+
+            <td class="description last"><p>Whether to watch the node</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="util.js.html">util.js</a>, <a href="util.js.html#line158">line 158</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl>
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Observable</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="withLock"><span class="type-signature"></span>withLock<span class="signature">(lockState$, action)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+<div class="description">
+    <p>Performs the provided action once a lock is obtained. No handling is
+in place for the case where a connection is lost when a lock is held; this
+will perform the action anyway, so it's assumed the action is idempotent.
+For more advanced handling, use the underlying lock observable directly.</p>
+</div>
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>lockState$</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Observable</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The observable of lock states, true or false</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>action</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">function</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The action to be performed when the lock is acquired</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+<dl class="details">
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="lock.js.html">lock.js</a>, <a href="lock.js.html#line39">line 39</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1562,13 +2696,13 @@ any dashes.</p>
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="InvalidNodeComponentError.html">InvalidNodeComponentError</a></li></ul><h3>Global</h3><ul><li><a href="global.html#createClientId">createClientId</a></li><li><a href="global.html#createClientNode">createClientNode</a></li><li><a href="global.html#defaultId">defaultId</a></li><li><a href="global.html#findClientNode">findClientNode</a></li><li><a href="global.html#getClientNodePrefix">getClientNodePrefix</a></li><li><a href="global.html#handleRecoverableExceptions">handleRecoverableExceptions</a></li><li><a href="global.html#validateNodeComponent">validateNodeComponent</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="module.exports.html">exports</a></li></ul><h3>Global</h3><ul><li><a href="global.html#createClientId">createClientId</a></li><li><a href="global.html#createClientNode">createClientNode</a></li><li><a href="global.html#findClientNode">findClientNode</a></li><li><a href="global.html#getClientNodePrefix">getClientNodePrefix</a></li><li><a href="global.html#handleRecoverableExceptions">handleRecoverableExceptions</a></li><li><a href="global.html#observeClientNode">observeClientNode</a></li><li><a href="global.html#observeExclusiveLock">observeExclusiveLock</a></li><li><a href="global.html#observeNodeUpdate">observeNodeUpdate</a></li><li><a href="global.html#observeNodeValue">observeNodeValue</a></li><li><a href="global.html#withLock">withLock</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sat Feb 25 2017 14:02:53 GMT-0500 (EST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sun Feb 26 2017 16:45:38 GMT-0500 (EST)
 </footer>
 
 <script> prettyPrint(); </script>

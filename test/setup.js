@@ -1,5 +1,6 @@
 import 'babel-polyfill';
 import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import sinon from 'sinon';
 import sinonChai from 'sinon-chai';
 
@@ -8,6 +9,7 @@ before( () => {
   global.assert = chai.assert;
   global.expect = chai.expect;
   chai.should();
+  chai.use(chaiAsPromised);
   chai.use(sinonChai);
   sinon.assert.expose(chai.assert, { prefix: "" });
 });
