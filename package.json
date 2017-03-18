@@ -10,7 +10,9 @@
     "lint": "eslint -c .eslintrc.json src/**/*.js",
     "test": "cross-env NODE_ENV=test mocha --compilers js:babel-core/register test/setup.js test/**/*.spec.js || true",
     "test:watch": "nodemon --watch src --watch test --exec 'npm run lint && npm run doc && npm run test'",
-    "coverage": "cross-env NODE_ENV=test nyc npm test && nyc report --reporter=lcov"
+    "coverage": "cross-env NODE_ENV=test nyc npm test && nyc report --reporter=lcov",
+    "exec": "babel-node lab/test.js || true",
+    "exec:watch": "nodemon --watch src --exec 'npm run lint && npm run exec'"
   },
   "repository": {
     "type": "git",
@@ -49,7 +51,7 @@
     "sinon-chai": "^2.8.0"
   },
   "dependencies": {
-    "bottlejs": "^1.6.0",
+    "es6-error": "^4.0.2",
     "node-zookeeper-client": "^0.2.2",
     "pify": "^2.3.0",
     "rxjs": "^5.1.1",

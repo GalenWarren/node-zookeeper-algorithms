@@ -1,204 +1,133 @@
-import sinon from 'sinon';
-import { CreateMode, Exception } from 'node-zookeeper-client';
+import EventEmitter from 'events';
 import { Observable } from 'rxjs';
-import Util from '../src/util';
 
-describe('Util', () => {
+import { sortBySequence } from '../src/client';
 
-  const util = new Util();
+import {
+  observeDelay,
+  makeRetryable,
+  observeNodeChildren
+} from '../src/util';
 
-  describe('createClientId', () => {
-    it('should return nonempty id without dashes', () => {
-      const id = util.createClientId();
-      id.should.not.be.empty;
-      id.should.not.contain('-');
-    });
+describe('observeDelay', () => {
 
-    it('should return unique ids', () => {
-      const id1 = util.createClientId();
-      const id2 = util.createClientId();
-      id1.should.not.equal(id2);
-    });
+  it('should properly emit a configured sequence', async () => {
+    (await observeDelay({
+      initialDelay: 500,
+      maxDelay: 2000,
+      maxRetries: 4
+    }).toArray().toPromise()).should.deep.equal([500, 1000, 2000, 2000])
   });
 
-  describe('getClientNodePrefix', () => {
-
-    it('should return expected values', () => {
-      util.getClientNodePrefix({
-        clientId: '123',
-      }).should.equal('123-');
-
-      util.getClientNodePrefix({
-        clientId: '123',
-        prefix: 'abc',
-      }).should.equal('abc-123-');
-    });
-
+  it('should properly emit a zero element sequence', async () => {
+    (await observeDelay({
+      initialDelay: 500,
+      maxDelay: 2000,
+      maxRetries: 0
+    }).toArray().toPromise()).should.deep.equal([])
   });
 
-  describe('handleRecoverableExceptions', () => {
-
-    it('should yield no retries if no retries', async () => {
-      const retryCount = await util.handleRecoverableExceptions(
-        Observable.of(),
-      ).count().toPromise();
-
-      retryCount.should.equal(0);
-    });
-
-    it('should yield no retries if the error is SESSION_EXPIRED', async () => {
-      return expect(util.handleRecoverableExceptions(
-        Observable.of(Object.assign(new Error(), {
-          code: Exception.SESSION_EXPIRED,
-        })),
-      )).to.throw;
-    });
-
-    it('should yield one retry if the error is CONNECTION_LOSS', async () => {
-      const retryCount = await util.handleRecoverableExceptions(
-        Observable.of(Object.assign(new Error(), {
-          code: Exception.CONNECTION_LOSS,
-        })),
-      ).count().toPromise();
-
-      retryCount.should.equal(1);
-    });
-
+  it('should properly emit a configured sequence', async () => {
+    (await observeDelay().toArray().toPromise()).should.be.an.array;
   });
 
-  describe('findClientNode', () => {
+});
 
-    it('should return a matching node when it is present', async () => {
-      const client = {
-        getChildren: sinon.stub().yields(null, [
-          "test-abc-001",
-          "test-def-002",
-          "test-ghi-003",
-        ]),
-      };
-      const found = await util.findClientNode({
-        client,
-        path: '/base',
-        clientNodePrefix: 'test-def-',
-      });
+describe('makeRetryable', function() {
 
-      found.should.equal("/base/test-def-002");
-      client.getChildren.should.have.been.calledOnce.calledWith('/base');
+  const result = "result";
+
+  const retryOptions = {
+    initialDelay: 1,
+    maxDelay: 1,
+    maxRetries: 3
+  };
+
+  const delay$ = observeDelay(retryOptions);
+
+  function failingObservable(failCount, value = null) {
+    let index = 0;
+    return Observable.defer(() => {
+      if (index++ < failCount) {
+        return Observable.throw(new Error('failingObservable'));
+      } else {
+        return Observable.of(value);
+      }
     });
+  }
 
-    it('should return undefined when no matching node is present', async () => {
-      const client = {
-        getChildren: sinon.stub().yields(null, [
-          "test-abc-001",
-          "test-dee-002",
-          "test-ghi-003",
-        ]),
-      };
-      const found = await util.findClientNode({
-        client,
-        path: '/base',
-        clientNodePrefix: 'test-def-',
-      });
-
-      expect(found).to.be.undefined;
-      client.getChildren.should.have.been.calledOnce.calledWith('/base');
-    });
-
-    it('should return undefined when no nodes are present', async () => {
-      const client = {
-        getChildren: sinon.stub().yields(null, []),
-      };
-      const found = await util.findClientNode({
-        client,
-        path: '/base',
-        clientNodePrefix: 'test-def-',
-      });
-
-      expect(found).to.be.undefined;
-      client.getChildren.should.have.been.calledOnce.calledWith('/base');
-    });
-
+  it('should get value from observable that does not fail', async () => {
+    const value$ = makeRetryable(failingObservable(0, result), delay$);
+    await value$.last().toPromise().should.become(result);
   });
 
-  describe('createClientNode', () => {
-
-    it('should make the proper call to create the zookeeper node', async () => {
-      const client = {
-        create: sinon.stub().yields(null, 'test-def-001'),
-      };
-      const node = await util.createClientNode({
-        client,
-        path: '/base',
-        clientNodePrefix: 'test-def-',
-      });
-
-      expect(node).to.equal('test-def-001');
-      client.create.should.have.been.calledOnce.calledWith(
-        '/base/test-def-',
-        null,
-        CreateMode.EPHEMERAL_SEQUENTIAL
-      );
-    });
-
+  it('should get value from observable that fails fewer than maxRetries times', async () => {
+    const value$ = makeRetryable(failingObservable(retryOptions.maxRetries - 1, result), delay$);
+    await value$.last().toPromise().should.become(result);
   });
 
-  describe('observeClientNode', () => {
+  it('should get value from observable that fails exactly maxRetries times', async () => {
+    const value$ = makeRetryable(failingObservable(retryOptions.maxRetries, result), delay$);
+    await value$.last().toPromise().should.become(result);
+  });
 
-    it('should create the node properly when it does not already exist', async () => {
+  it('should fail to get value from observable that fails > maxRetries times', async () => {
+    const value$ = makeRetryable(failingObservable(retryOptions.maxRetries + 1, result), delay$);
+    await value$.toPromise().should.be.rejectedWith('failingObservable');
+  });
 
-      const clientId = util.createClientId();
+  it('should get value from observable that fails in a way that matches predicate', async () => {
+    const value$ = makeRetryable(
+      failingObservable(retryOptions.maxRetries - 1, result),
+      delay$,
+      error => true
+    );
+    await value$.last().toPromise().should.become(result);
+  });
 
-      const client = {
-        getChildren: sinon.stub().yields(null, []),
-        create: sinon.spy((path, data, mode, callback) => {
-          callback(null, `${path}001`);
-        }),
-      };
+  it('should not get value from observable that fails in a way that does not match predicate', async () => {
+    const value$ = makeRetryable(
+      failingObservable(retryOptions.maxRetries - 1, result),
+      delay$,
+      error => false
+    );
+    await value$.toPromise().should.be.rejectedWith('failingObservable');
+  });
 
-      const node = await util.observeClientNode({
-        client,
-        path: '/base',
-        prefix: 'lock',
-        clientId,
-      }).toPromise();
+});
 
-      node.should.equal(`/base/lock-${clientId}-001`);
-      client.getChildren.should.have.callCount(0);
-      client.create.should.have.been.calledOnce.calledWith(
-        `/base/lock-${clientId}-`,
-        null,
-        CreateMode.EPHEMERAL_SEQUENTIAL
-      );
+describe('observeNodeChildren', () => {
 
+  const children = [
+    'type-client-003',
+    'type-client-001',
+    'type-client-002'
+  ];
+
+  const client = {
+    mkdirp: sandbox.stub().yields(null),
+    getChildren: sandbox.stub().yields(null, [children])
+  };
+
+  it('should properly observe children', async () => {
+    const children$ = observeNodeChildren({
+      client,
+      path: '/test'
     });
+    await children$.toArray().toPromise().should.become([children]);
+  });
 
-    it('should find the node properly when it does already exists', async () => {
-
-      const clientId = util.createClientId();
-
-      const client = {
-        getChildren: sinon.stub().yields(null, [
-          'lock-abc-001',
-          `lock-${clientId}-001`,
-          'lock-def-001',
-        ]),
-        create: sinon.stub(),
-      };
-
-      const node = await util.observeClientNode({
-        client,
-        path: '/base',
-        prefix: 'lock',
-        clientId,
-        skipInitialFind: false,
-      }).toPromise();
-
-      node.should.equal(`/base/lock-${clientId}-001`);
-      client.getChildren.should.have.been.calledOnce.calledWith('/base');
-      client.create.should.have.callCount(0);
-
+  it('should properly observe children with filter and sort', async () => {
+    const children$ = observeNodeChildren({
+      client,
+      path: '/test',
+      filter: children => children.filter(child => !/2/.test(child)),
+      sort: children => children.sort(sortBySequence)
     });
-
+    await children$.toArray().toPromise().should.become([[
+      'type-client-001',
+      'type-client-003'
+    ]]);
   });
 
 });

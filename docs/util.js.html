@@ -26,204 +26,81 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* eslint-disable class-methods-use-this */
-import EventEmitter from 'events';
-import uuid from 'uuid/v4';
-import { CreateMode, Exception } from 'node-zookeeper-client';
+            <pre class="prettyprint source linenums"><code>import pify from 'pify';
 import { Observable } from 'rxjs';
-import pify from 'pify';
 
 /**
-* A utilities class
+* Creates an observable of delay values for retries given the provided retry options
+* @param {Object} options
+* @param {number} [options.initialDelay=500] - The initial retry delay
+* @param {number} [options.delayFactor=2] - The factor by which to increase each delay
+* @param {number} [options.maxDelay=8000] - The max delay value
+* @param {number} [options.maxRetries=7] - The max number of retries
+* @returns {Observable}
 */
-export default class Util {
+export function observeDelay(options = {}) {
+  const { initialDelay = 500, delayFactor = 2, maxDelay = 8000, maxRetries = 7 } = options;
+  return Observable.generate(
+    [0, initialDelay],
+    ([index]) => index &lt; maxRetries,
+    ([index, delay]) => [index + 1, Math.min(delay * delayFactor, maxDelay)],
+    ([, delay]) => delay
+  );
+}
 
-  /**
-  * Creates a client id
-  * @returns {string} - A unique id (uuid v4 with no dashes)
-  */
-  createClientId() {
-    return uuid().replace(/-/g, '');
-  }
-
-  /**
-  * Creates a prefix for a client node, combining an optional
-  * prefix and client id
-  * @param {Object} options - Options
-  * @param {string} options.clientId - Client id
-  * @param {string} [options.prefix] - Node prefix
-  * @returns {string}
-  */
-  getClientNodePrefix(options) {
-    const { clientId, prefix } = options;
-    const components = [clientId, ''];
-    if (prefix) {
-      components.unshift(prefix);
-    }
-    return components.join('-');
-  }
-
-  /**
-  * A notification handler to be used by rxjs's retryUntil, implements the
-  * rules for recoverable errors for zookeeper. Specifically, this causes
-  * zookeeper actions to be retried (with exponential backoff) if
-  * CONNECTION_LOSS is returned but treats everything else as fatal.
-  * See https://cwiki.apache.org/confluence/display/ZOOKEEPER/FAQ
-  * @param {Observable} error$ - The observable of error notifications
-  * @param {Object} [options] - The options for the handler
-  * @param {number} [options.initialDelay=1000] - The initial retry delays
-  * @param {number} [options.maxDelay=8000] - The max delay
-  * @param {number} [options.maxRetries=6] - The max number of retries before we give up
-  */
-  handleRecoverableExceptions(error$, options = {}) {
-    const { initialDelay = 500, maxDelay = 8000, maxRetries = 7 } = options;
-
-    // this observable will return the sequence of retry delays
-    const delay$ = Observable.generate(
-      0,
-      index => index &lt; maxRetries,
-      index => index + 1,
-      index => Math.min((2 ** index) * initialDelay, maxDelay)
-    );
-
-    // retry on connection until we run out of retries
-    return Observable.zip(error$, delay$)
-      .flatMap(([err, delay]) => {
-        switch (err.code) {
-          case Exception.CONNECTION_LOSS:
-            return Observable.of(null).delay(delay);
-          default:
-            return Observable.throw(err);
+/**
+* Makes an observable retryable with the provided delays.
+* @param {Observable} obs$ - The input observable
+* @param {Observable} delay$ - The delays to use
+* @param {function} [retryPredicate] - Determines if the retry should occur
+* based on the supplied error object. If not supplied, all errors are retried.
+* @returns {Observable}
+*/
+export function makeRetryable(obs$, delay$, retryPredicate = null) {
+  // retry on error as long as retryPredicate returns true and we have retries left.
+  // tack one extra null onto the delay observable; when we encounter that, we know
+  // we're out of retries and so should throw the error
+  return obs$.retryWhen(error$ =>
+    Observable.zip(error$, delay$.concat(Observable.of(null)))
+      .flatMap(([error, delay]) => {
+        if ((delay !== null) &amp;&amp; (!retryPredicate || retryPredicate(error))) {
+          return Observable.of(null).delay(delay);
         }
-      });
+        return Observable.throw(error);
+      })
+    );
+}
+
+/**
+* Creates an observable of the children of a node. The filter and sort functions
+* are passed the node names of the children, without the parent path.
+* @param {ZookeeperClient} client - The node-zookeeper-client instance
+* @param {Object} options
+* @param {string} options.path - The path of the parent node
+* @param {function} [options.filter] - The filter function
+* @param {function} [options.sort] - The sort function
+* @param {function} [options.watcher] - The watcher function
+*/
+export function observeNodeChildren(options) {
+  const { client, path, filter = null, sort = null, watcher = null } = options;
+
+  // construct the observable children
+  let children$ = Observable.defer(async () => {
+    await pify(client.mkdirp).call(client, path);
+    const [children] = await pify(client.getChildren).call(client, path, watcher);
+    return children;
+  });
+
+  // filter and sort if supplied
+  if (filter) {
+    children$ = children$.map(filter);
+  }
+  if (sort) {
+    children$ = children$.map(sort);
   }
 
-  /**
-  * Finds a client node by id client node, returns a promise that resolves to
-  * the client node
-  * @param {Object} options - Options
-  * @param {ZookeeperClient} options.client - The zookeeper client
-  * @param {string} options.path - The base path at which to look
-  * @param {string} options.clientNodePrefix - The prefix of the client node
-  * @returns {Promise}
-  */
-  async findClientNode(options) {
-    const { client, path, clientNodePrefix } = options;
-
-    // load all the current children and return the one that matches,
-    // or undefined if none match
-    const children = await pify(client.getChildren).call(client, path);
-    const match = children.find(child => child.startsWith(clientNodePrefix));
-    return match ? [path, match].join('/') : match;
-  }
-
-
-  /**
-  * Creates a client node, returns promise that is resolved with the node name
-  * @param {Object} options - Options
-  * @param {ZookeeperClient} options.client - The zookeeper client
-  * @param {string} options.path - The base path at which to look
-  * @param {string} options.clientNodePrefix - The prefix of the client node
-  * @returns {Promise}
-  */
-  createClientNode(options) {
-    const { client, path, clientNodePrefix } = options;
-
-    // create the node
-    const basePath = [path, clientNodePrefix].join('/');
-    return pify(client.create).call(client, basePath, null, CreateMode.EPHEMERAL_SEQUENTIAL);
-  }
-
-  /**
-  * Creates a client node, returns an observable that will produce the newly created
-  * node and then complete (or it will fail if there is an error creating the node)
-  * @param {Object} options - Options
-  * @param {ZookeeperClient} options.client - The zookeeper client
-  * @param {string} options.path - The path under which to create the node
-  * @param {string} [options.prefix] - The node prefix
-  * @param {string} options.clientId - The client id to use
-  * @param {boolean} [options.skipInitialFind=true] - Whether to skip the find
-  * operation on the first iteration, should be set to true except for testing
-  * @returns {Observable}
-  */
-  observeClientNode(options) {
-    const { client, path, clientId, prefix, skipInitialFind = true } = options;
-    const clientNodePrefix = this.getClientNodePrefix({ clientId, prefix });
-
-    // helper to try to find the node. first look for the node, then if not found
-    // try to create it. if skipInitialFind=true, skip the find on the initial
-    // iteration, because we know the client id shouldn't be there. this is really
-    // here primarily for testing ...
-    let skipFind = skipInitialFind;
-    const getClientNode = async () => {
-      let node = null;
-      if (skipFind) {
-        skipFind = false;
-      } else {
-        node = await this.findClientNode({ client, path, clientNodePrefix });
-      }
-      if (!node) {
-        node = await this.createClientNode({ client, path, clientNodePrefix });
-      }
-      return node;
-    };
-
-    // create the an observable that yields the created node
-    return Observable.defer(getClientNode);
-  }
-
-  /**
-  * Generates an observable of an operation against a node. If watch=false, there
-  * will be exactly one element; otherwise, this is a neverending stream that
-  * resets the watch on every iteration.
-  * @param {Object} options - Options
-  * @param {ZookeeperClient} options.client - The zookeeper client
-  * @param {string} options.path - The parent node path
-  * @param {string} options.method - The method to access the value
-  * @param {boolean} [options.watch=false] - Whether to watch the node
-  * @returns {Observable}
-  */
-  observeNodeValue(options) {
-    const { client, path, method, watch } = options;
-    let changes = null;
-
-    const value$ = Observable.defer(() => pify(client[method]).call(
-      client,
-      path,
-      watch ? () => changes.emit('change') : null
-    ));
-
-    // if watching, wire up to resubscribe when changes occur
-    if (watch) {
-      changes = new EventEmitter();
-      return value$.repeatWhen(Observable.fromEvent(changes, 'change'));
-    }
-
-    // not watching, so just return one-shot value
-    return value$;
-  }
-
-  /**
-  * Observes a node update operation.
-  * @param {Object} options - Options
-  * @param {ZookeeperClient} options.client - The zookeeper client
-  * @param {string} options.path - The parent node path
-  * @param {string} options.method - The method to access the value
-  * @param {boolean} [options.args=[]] - Additional arguments for the update
-  * @returns {Observable}
-  */
-  observeNodeUpdate(options) {
-    const { client, path, method, version, args = [] } = options;
-
-    // perform the update
-    return Observable.defer(() => pify(client[method]).call(
-      client,
-      path,
-      ...args,
-      version
-    ));
-  }
-
+  // return node names (not full paths!)
+  return children$;
 }
 </code></pre>
         </article>
@@ -235,13 +112,13 @@ export default class Util {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="module.exports.html">exports</a></li></ul><h3>Global</h3><ul><li><a href="global.html#createClientId">createClientId</a></li><li><a href="global.html#createClientNode">createClientNode</a></li><li><a href="global.html#findClientNode">findClientNode</a></li><li><a href="global.html#getClientNodePrefix">getClientNodePrefix</a></li><li><a href="global.html#handleRecoverableExceptions">handleRecoverableExceptions</a></li><li><a href="global.html#observeClientNode">observeClientNode</a></li><li><a href="global.html#observeExclusiveLock">observeExclusiveLock</a></li><li><a href="global.html#observeNodeUpdate">observeNodeUpdate</a></li><li><a href="global.html#observeNodeValue">observeNodeValue</a></li><li><a href="global.html#withLock">withLock</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="module.exports.html">exports</a></li></ul><h3>Global</h3><ul><li><a href="global.html#connect">connect</a></li><li><a href="global.html#generateClientId">generateClientId</a></li><li><a href="global.html#getClientNodePrefix">getClientNodePrefix</a></li><li><a href="global.html#makeRetryable">makeRetryable</a></li><li><a href="global.html#observeClientState">observeClientState</a></li><li><a href="global.html#observeDelay">observeDelay</a></li><li><a href="global.html#observeLockState">observeLockState</a></li><li><a href="global.html#observeNodeChildren">observeNodeChildren</a></li><li><a href="global.html#parseClientNode">parseClientNode</a></li><li><a href="global.html#sortBySequence">sortBySequence</a></li><li><a href="global.html#unsubscribe">unsubscribe</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sun Feb 26 2017 16:45:38 GMT-0500 (EST)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sat Mar 18 2017 19:55:49 GMT-0400 (EDT)
 </footer>
 
 <script> prettyPrint(); </script>

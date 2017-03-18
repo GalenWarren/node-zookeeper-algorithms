@@ -1,8 +1,3 @@
-import bottle from 'bottlejs';
-import Util from './util';
-import Lock from './lock';
+import RecipesClient from './client';
 
-bottle.service('Util', Util);
-bottle.service('Lock', Lock, 'Util');
-
-export const lock = bottle.container.Lock;
+export { RecipesClient as default };
