@@ -27,48 +27,55 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>import { Observable } from 'rxjs';
-import { CreateMode } from 'node-zookeeper-client';
-import uuid from 'uuid/v4';
-
-import { observeNodeChildren } from './util';
-import { getClientNodePrefix, sortBySequence } from './client';
+import { observeRemoveNode } from './util';
 
 /**
-* Attempts to acquire a lock and the given path and observes the lock state
-* @param {Observable} clientState$ - The client state observable
-* @param {string} path - The path at which to observe
-* @param {string} [clientId] - The client id to use, one is allocated if not supplied
+* Generates an observable for an exclusive lock on a resource.
+* @param {Object} options
+* @param {Object} options.client - The node-zookeeper-client instance
+* @param {Object} options.path - The path on which to get the lock
+* @param {string} options.clientNodePrefix - The client node prefix for this action
 */
-export function observeLockState(clientState$, path, clientId = null) {
-  const clientNodePrefix = getClientNodePrefix(clientId || uuid());
-  const clientPath = [path, clientNodePrefix].join('/');
-  console.log(clientNodePrefix, clientPath);
+export function observeExclusiveLock(options) {
+  const { client, path, clientNodePrefix } = options;
+  return this.observeSeekClientNodeState({
+    client,
+    path,
+    clientNodePrefix,
+    repeat: (nodes, result, clientIndex) => {
+      const waitIndex = Math.max(clientIndex - 1, 0);
+      return observeRemoveNode(client, nodes[waitIndex]).map(() => true);
+    }
+  });
+}
 
-  return clientState$
-    .flatMap(({ client, connected }) => {
-      // are we connected?
-      if (connected) {
-        // yes, so observe the children to determine our state
-        return observeNodeChildren({
-          client,
-          path,
-          sort: sortBySequence
-        }).flatMap((children) => {
-          const index = children.findIndex(child => child.endsWith(clientNodePrefix));
-          console.log('index', index);
-          if (index &lt; 0) {
-            return Observable.bindNodeCallback(client.create).call(
-              client,
-              clientPath,
-              null,
-              CreateMode.EPHEMERAL_SEQUENTIAL
-            );
-          }
-          return Observable.of(true);
-        }).retryWhen(completion$ => completion$.map(() => true));
+/**
+* Generates an observable for an all for one action
+* @param {Object} options
+* @param {Object} options.client - The node-zookeeper-client instance
+* @param {Object} options.path - The path on which to get the lock
+* @param {string} options.clientNodePrefix - The client node prefix for this action
+* @param {function} options.action
+* @param {function} options.testActionDone
+*/
+export function observeOneForAllAction(options) {
+  const { client, path, clientNodePrefix, action, testActionDone } = options;
+  return this.observeSeekClientNodeState({
+    client,
+    path,
+    clientNodePrefix,
+    repeat: async (nodes) => {
+      const done = await Promise.resolve(testActionDone());
+      if (done) {
+        return Observable.of(false);
       }
-      return Observable.of(false);
-    });
+      return observeRemoveNode(client, nodes[0]).map(() => true);
+    }
+  }).flatMap((isLeader) => {
+    if (isLeader) {
+      action();
+    }
+  });
 }
 </code></pre>
         </article>
@@ -80,13 +87,13 @@ export function observeLockState(clientState$, path, clientId = null) {
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="module.exports.html">exports</a></li></ul><h3>Global</h3><ul><li><a href="global.html#connect">connect</a></li><li><a href="global.html#generateClientId">generateClientId</a></li><li><a href="global.html#getClientNodePrefix">getClientNodePrefix</a></li><li><a href="global.html#makeRetryable">makeRetryable</a></li><li><a href="global.html#observeClientState">observeClientState</a></li><li><a href="global.html#observeDelay">observeDelay</a></li><li><a href="global.html#observeLockState">observeLockState</a></li><li><a href="global.html#observeNodeChildren">observeNodeChildren</a></li><li><a href="global.html#parseClientNode">parseClientNode</a></li><li><a href="global.html#sortBySequence">sortBySequence</a></li><li><a href="global.html#unsubscribe">unsubscribe</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="module.exports.html">exports</a></li></ul><h3>Global</h3><ul><li><a href="global.html#changeEventName">changeEventName</a></li><li><a href="global.html#connect">connect</a></li><li><a href="global.html#generateClientId">generateClientId</a></li><li><a href="global.html#getClientNodePrefix">getClientNodePrefix</a></li><li><a href="global.html#getExclusiveLock">getExclusiveLock</a></li><li><a href="global.html#leaderSelector">leaderSelector</a></li><li><a href="global.html#makeRetryable">makeRetryable</a></li><li><a href="global.html#observeClientState">observeClientState</a></li><li><a href="global.html#observeConnectedState">observeConnectedState</a></li><li><a href="global.html#observeCreateNode">observeCreateNode</a></li><li><a href="global.html#observeDelay">observeDelay</a></li><li><a href="global.html#observeExclusiveLock">observeExclusiveLock</a></li><li><a href="global.html#observeLeaderState">observeLeaderState</a></li><li><a href="global.html#observeNodeChildren">observeNodeChildren</a></li><li><a href="global.html#observeNodeValue">observeNodeValue</a></li><li><a href="global.html#observeOneForAllAction">observeOneForAllAction</a></li><li><a href="global.html#observeRemoveNode">observeRemoveNode</a></li><li><a href="global.html#observeSeekClientNodeState">observeSeekClientNodeState</a></li><li><a href="global.html#observeSeekState">observeSeekState</a></li><li><a href="global.html#parseClientNode">parseClientNode</a></li><li><a href="global.html#sortClientNodesBySequence">sortClientNodesBySequence</a></li><li><a href="global.html#unsubscribe">unsubscribe</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sat Mar 18 2017 19:55:49 GMT-0400 (EDT)
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Sun Mar 26 2017 13:53:43 GMT-0400 (EDT)
 </footer>
 
 <script> prettyPrint(); </script>

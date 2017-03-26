@@ -3,7 +3,7 @@ import EventEmitter from 'events';
 
 import {
   observeLockState
-} from '../src/lock';
+} from '../../src/recipes/lock';
 
 describe('observeLockState', () => {
 
@@ -17,6 +17,8 @@ describe('observeLockState', () => {
   };
 
   const client = {
+    mkdirp: sandbox.stub().yields(),
+    getChildren: sandbox.stub(),
   };
 
   it('should', async () => {
@@ -24,7 +26,11 @@ describe('observeLockState', () => {
     const lockState$ = observeLockState(clientState$, '/test', 'client1');
     lockState$.subscribe(handlers.next, handlers.error, handlers.complete);
 
+    client.getChildren.yieldsWith(null, []);
+
     clientStateEmitter.emit('state', { client, connected: true, readonly: false });
+
+    handlers.next.should.have.been.calledOnce.calledWith();
 
   });
 
