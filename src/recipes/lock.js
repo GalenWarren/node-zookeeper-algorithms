@@ -1,4 +1,7 @@
-import { observeRemoveNode } from '../util';
+import {
+  observeSeekClientNodeState,
+  observeRemoveNode
+} from '../util';
 
 /**
 * Generates an observable for an exclusive lock on a resource.
@@ -9,7 +12,7 @@ import { observeRemoveNode } from '../util';
 */
 export function observeExclusiveLock(options) {
   const { client, path, clientNodePrefix } = options;
-  return this.observeSeekClientNodeState({
+  return observeSeekClientNodeState({
     client,
     path,
     clientNodePrefix,

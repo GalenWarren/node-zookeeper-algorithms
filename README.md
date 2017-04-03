@@ -6,4 +6,4 @@ This library provides implementations of some standard Zookeeper recipes, as des
 
 [Documentation](https://galenwarren.github.io/node-zookeeper-recipes/)
 
-*Under construction, please come back later ...*
+*Under construction, please come back later...*
