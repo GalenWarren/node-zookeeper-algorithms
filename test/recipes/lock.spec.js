@@ -2,10 +2,10 @@ import { Observable } from 'rxjs';
 import EventEmitter from 'events';
 
 import {
-  observeLockState
+  observeExclusiveLock
 } from '../../src/recipes/lock';
 
-describe('observeLockState', () => {
+describe('observeExclusiveLock', () => {
 
   const clientStateEmitter = new EventEmitter();
   const clientState$ = Observable.fromEvent(clientStateEmitter, 'state');
@@ -23,7 +23,7 @@ describe('observeLockState', () => {
 
   it('should', async () => {
 
-    const lockState$ = observeLockState(clientState$, '/test', 'client1');
+    const lockState$ = observeExclusiveLock(clientState$, '/test', 'client1');
     lockState$.subscribe(handlers.next, handlers.error, handlers.complete);
 
     client.getChildren.yieldsWith(null, []);
