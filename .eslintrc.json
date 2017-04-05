@@ -3,7 +3,6 @@
     "airbnb"
   ],
   "rules": {
-    "import/prefer-default-export": "off",
-    "comma-dangle": "off"
+    "import/prefer-default-export": "off"
   }
 }

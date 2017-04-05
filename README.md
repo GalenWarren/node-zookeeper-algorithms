@@ -2,8 +2,8 @@
 
 ## Overview ##
 
-This library provides implementations of some standard Zookeeper recipes, as described [here](https://zookeeper.apache.org/doc/trunk/recipes.html) and, in some cases, with some extensions.
+This library provides implementations of some Zookeeper recipes, including some standard ones as described [here](https://zookeeper.apache.org/doc/trunk/recipes.html).
 
-[Documentation](https://galenwarren.github.io/node-zookeeper-recipes/)
+API [documentation](https://galenwarren.github.io/node-zookeeper-recipes/)
 
 *Under construction, please come back later...*

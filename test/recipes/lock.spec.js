@@ -7,31 +7,51 @@ import {
 
 describe('observeExclusiveLock', () => {
 
-  const clientStateEmitter = new EventEmitter();
-  const clientState$ = Observable.fromEvent(clientStateEmitter, 'state');
-
-  const handlers = {
-    next: sandbox.stub(),
-    error: sandbox.stub(),
-    complete: sandbox.stub()
-  };
-
   const client = {
-    mkdirp: sandbox.stub().yields(),
+    mkdirp: sandbox.stub().yields(null),
     getChildren: sandbox.stub(),
+    exists: sandbox.stub(),
+    create: sandbox.stub(),
   };
 
-  it('should', async () => {
+  const path = '/lock';
 
-    const lockState$ = observeExclusiveLock(clientState$, '/test', 'client1');
-    lockState$.subscribe(handlers.next, handlers.error, handlers.complete);
+  const clientNodePrefix = 'abc';
 
-    client.getChildren.yieldsWith(null, []);
+  it('should properly obtain lock when client node already exists', async () => {
 
-    clientStateEmitter.emit('state', { client, connected: true, readonly: false });
+    client.getChildren.onCall(0).yields(null, [['abc-0001']]);
 
-    handlers.next.should.have.been.calledOnce.calledWith();
+    const lockState$ = observeExclusiveLock({
+      client,
+      path,
+      clientNodePrefix,
+    });
 
+    const lockState = await lockState$.first().toPromise();
+    lockState.should.equal(true);
+
+    client.mkdirp.should.have.been.calledOnce.calledWith(path);
+    client.getChildren.should.have.been.calledOnce.calledWith(path);
+  });
+
+  it('should properly obtain lock when client node is first to be created', async () => {
+
+    client.getChildren.onCall(0).yields(null, [[]]);
+    client.getChildren.onCall(1).yields(null, [['abc-0001']]);
+
+    const lockState$ = observeExclusiveLock({
+      client,
+      path,
+      clientNodePrefix,
+    });
+
+    const lockState = await lockState$.first().toPromise();
+    lockState.should.equal(true);
+
+    client.mkdirp.should.have.been.calledTwice.calledWith(path);
+    client.getChildren.should.have.been.calledTwice.calledWith(path);
+    // client.create.should.have.been.calledOnce.calledWith('abc');
   });
 
 });

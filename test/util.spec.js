@@ -102,6 +102,16 @@ describe('makeRetryable', function() {
 
 });
 
+describe('observeSeekState', () => {
+
+  it('should', () => {
+
+    
+
+  });
+
+});
+
 describe('observeNodeChildren', () => {
 
   const children = [

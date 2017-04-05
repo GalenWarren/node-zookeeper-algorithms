@@ -26,7 +26,7 @@ export function observeDelay(options = {}) {
     [0, initialDelay],
     ([index]) => index < maxRetries,
     ([index, delay]) => [index + 1, Math.min(delay * delayFactor, maxDelay)],
-    ([, delay]) => delay
+    ([, delay]) => delay,
   );
 }
 
@@ -49,7 +49,7 @@ export function makeRetryable(obs$, delay$, retryPredicate = null) {
           return Observable.of(null).delay(delay);
         }
         return Observable.throw(error);
-      })
+      }),
     );
 }
 
@@ -66,7 +66,10 @@ export function makeRetryable(obs$, delay$, retryPredicate = null) {
 export function observeSeekState(options) {
   const { state$, select, repeat } = options;
 
-  // track these values to use when repeating
+  // track these values to use when repeating. ideally we'd avoid this sort
+  // of side-effecting behavior but there doesn't seem to be any other way
+  // to capture this information to use in the repeatWhen call below. at
+  // least all side effects are scoped to this function ...
   let lastState = null;
   let lastResult = null;
 
@@ -89,7 +92,7 @@ export function observeSeekState(options) {
 
     // this causes the observable to complete if a nontruthy value
     // emitted, which ends the loop
-    .takeWhile(value => value)
+    .takeWhile(value => value),
   );
 }
 
@@ -121,7 +124,6 @@ export function observeNodeChildren(options) {
     children$ = children$.map(sort);
   }
 
-  // return node names (not full paths!)
   return children$;
 }
 
@@ -160,7 +162,7 @@ export function observeRemoveNode(options) {
     client,
     path,
     watch,
-    accessor: watcher => pify(client.exists).call(client, path, watcher)
+    accessor: watcher => pify(client.exists).call(client, path, watcher),
   }).first(stat => !stat);
 }
 
@@ -174,9 +176,7 @@ export function observeRemoveNode(options) {
 */
 export function observeCreateNode(options) {
   const { client, path, mode } = options;
-  return Observable.defer(
-    () => pify(client.create).call(client, path, null, mode)
-  );
+  return Observable.defer(() => pify(client.create).call(client, path, null, mode));
 }
 
 /**
@@ -297,9 +297,7 @@ export function observeClientState(clientFactory) {
 * @returns {function}
 */
 export function leaderSelector(clientNodePrefix) {
-  return nodes => Observable.of(
-    nodes.length && nodes[0].startsWith(clientNodePrefix)
-  );
+  return nodes => Observable.of(nodes.length && nodes[0].startsWith(clientNodePrefix));
 }
 
 /**
@@ -316,20 +314,22 @@ export function observeSeekClientNodeState(options) {
   return observeSeekState({
     client,
     state$: observeNodeChildren({
+      client,
       path,
-      sort: sortClientNodesBySequence
+      sort: nodes => nodes.sort(sortClientNodesBySequence),
     }),
     select: select || leaderSelector(clientNodePrefix),
     repeat: (nodes, result) => {
       const clientIndex = nodes.findIndex(node => node.startsWith(clientNodePrefix));
+      console.log('abc', clientIndex);
       if (clientIndex < 0) {
         return observeCreateNode({
           client,
           path: [path, clientNodePrefix].join('/'),
-          mode: CreateMode.EPHEMERAL_SEQUENTIAL
+          mode: CreateMode.EPHEMERAL_SEQUENTIAL,
         });
       }
       return repeat(nodes, result, clientIndex);
-    }
+    },
   });
 }

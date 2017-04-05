@@ -1,6 +1,6 @@
 import {
   observeSeekClientNodeState,
-  observeRemoveNode
+  observeRemoveNode,
 } from '../util';
 
 /**
@@ -18,7 +18,10 @@ export function observeExclusiveLock(options) {
     clientNodePrefix,
     repeat: (nodes, result, clientIndex) => {
       const waitIndex = Math.max(clientIndex - 1, 0);
-      return observeRemoveNode(client, nodes[waitIndex]).map(() => true);
-    }
+      return observeRemoveNode({
+        client,
+        path: nodes[waitIndex],
+      }).map(() => true);
+    },
   }).distinctUntilChanged();
 }

@@ -22,7 +22,7 @@ export function observeOneForAllAction(options) {
         return Observable.of(false);
       }
       return observeRemoveNode(client, nodes[0]).map(() => true);
-    }
+    },
   }).distinctUntilChanged()
     .flatMap((isLeader) => {
       if (isLeader) {

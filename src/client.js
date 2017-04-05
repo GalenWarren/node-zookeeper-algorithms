@@ -5,11 +5,11 @@ import {
   getClientNodePrefix,
   observeDelay,
   makeRetryable,
-  observeClientState
+  observeClientState,
 } from './util';
 
 import { observeExclusiveLock } from './recipes/lock';
-import { observeOneForAllAction } from './recipes/oneForAll';
+// import { observeOneForAllAction } from './recipes/oneForAll';
 
 /**
 * The client object for recipes
@@ -17,7 +17,6 @@ import { observeOneForAllAction } from './recipes/oneForAll';
 export default class RecipesClient {
 
   /**
-  * constructor
   * @param {Object} options
   * @param {function} options.clientFactory - Creates a node-zookeeper-client
   * @param {Object} [options.retryOptions={}] - The retry options
@@ -67,7 +66,7 @@ export default class RecipesClient {
   observeExclusiveLock(path, clientId = null) {
     const clientNodePrefix = getClientNodePrefix(clientId || generateClientId());
     return this.observeConnectedState(
-      client => observeExclusiveLock({ client, path, clientNodePrefix })
+      client => observeExclusiveLock({ client, path, clientNodePrefix }),
     );
   }
 
