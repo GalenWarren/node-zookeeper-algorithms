@@ -106,7 +106,7 @@ describe('observeSeekState', () => {
 
   it('should', () => {
 
-    
+
 
   });
 
@@ -147,6 +147,23 @@ describe('observeNodeChildren', () => {
   });
 
 });
+
+describe('observeNodeValue', () => {
+
+  it('should properly observe node value', () => {
+
+  });
+
+});
+
+describe('observeNodeUpdate', () => {
+
+  it('should properly observe node value', () => {
+
+  });
+
+});
+
 
 describe('generateClientId', () => {
 

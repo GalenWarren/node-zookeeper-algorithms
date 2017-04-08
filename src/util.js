@@ -2,9 +2,8 @@ import EventEmitter from 'events';
 import pify from 'pify';
 import uuid from 'uuid';
 import { Observable } from 'rxjs';
-import { State, CreateMode } from 'node-zookeeper-client';
-
-import { ExpiredError, AuthenticationFailedError, InvalidStateError } from './errors';
+import { CreateMode } from 'node-zookeeper-client';
+import { InvalidStateError } from './errors';
 
 /**
 * Constant for event name to avoid strings everywhere
@@ -54,129 +53,75 @@ export function makeRetryable(obs$, delay$, retryPredicate = null) {
 }
 
 /**
-* A generic state seeking algorithm that takes the supplied observable
-* and returns its state, optionally transformed, as the output. This repeats
-* indefinitely after the wait observable completes on each cycle, so that observable
-* should emit when the state should be reevaluated and issued by the main observable.
-* @param {Object} options
-* @param {Observable} options.state$
-* @param {function} options.repeat
-* @param {function} [options.select]
+* Creates an observable of a node value.
+* @param {function} accessor - The function that accepts the callback handler
+* and returns a promise/observable for the value we care about.
+* @param {boolean} [watch=false] - Whether to watch the node. If true, then the
+* observable doesn't complete and emits new values whenever the observed value
+* changes. If false, then the observable completes after emitting a single value.
+* @returns {Observable}
 */
-export function observeSeekState(options) {
-  const { state$, select, repeat } = options;
-
-  // track these values to use when repeating. ideally we'd avoid this sort
-  // of side-effecting behavior but there doesn't seem to be any other way
-  // to capture this information to use in the repeatWhen call below. at
-  // least all side effects are scoped to this function ...
-  let lastState = null;
-  let lastResult = null;
-
-  // build up the state observable
-  let seekState$ = state$.do((state) => {
-    // capture the last state
-    lastState = state;
+export function observeNodeValue(accessor, watch = false) {
+  return Observable.defer(() => {
+    let observation$ = Observable.of(null);
+    let watcher = null;
+    if (watch) {
+      const emitter = new EventEmitter();
+      observation$ = observation$.concat(Observable.fromEvent(emitter, changeEventName));
+      watcher = () => emitter.emit(changeEventName);
+    }
+    return observation$.flatMap(() => accessor(watcher));
   });
-  if (select) {
-    // use flatMap here to support async
-    seekState$ = seekState$.flatMap(select);
-  }
-  return seekState$.do((result) => {
-    // capture the last result
-    lastResult = result;
-  }).repeatWhen(completion$ => completion$
-    // use flatMap here to support async, supply the repeat
-    // function the last state and result values
-    .flatMap(() => repeat(lastState, lastResult))
+}
 
-    // this causes the observable to complete if a nontruthy value
-    // emitted, which ends the loop
-    .takeWhile(value => value),
+/**
+* Creates an observable of the children of a node.
+* @param {ZookeeperClient} client - The node-zookeeper-client instance
+* @param {string} path - The path of the parent node
+* @param {function} [watch] - Whether to watch for changes.
+* @returns {Observable}
+*/
+export function observeNodeChildren(client, path, watch = false) {
+  return observeNodeValue(
+    watcher => pify(client.getChildren).call(client, path, watcher),
+    watch,
   );
 }
 
 /**
-* Creates an observable of the children of a node. The filter and sort functions
-* are passed the node names of the children, without the parent path.
+* Creates an observable that emits a null and then completes when the
+* node vanishes.
 * @param {ZookeeperClient} client - The node-zookeeper-client instance
-* @param {Object} options
-* @param {string} options.path - The path of the parent node
-* @param {function} [options.filter] - The filter function
-* @param {function} [options.sort] - The sort function
-* @param {function} [options.watcher] - The watcher function
+* @param {string} path - The path of the node to remove
+* @returns {Observable}
 */
-export function observeNodeChildren(options) {
-  const { client, path, filter = null, sort = null, watcher = null } = options;
-
-  // construct the observable children
-  let children$ = Observable.defer(async () => {
-    await pify(client.mkdirp).call(client, path);
-    const [children] = await pify(client.getChildren).call(client, path, watcher);
-    return children;
-  });
-
-  // filter and sort if supplied
-  if (filter) {
-    children$ = children$.map(filter);
-  }
-  if (sort) {
-    children$ = children$.map(sort);
-  }
-
-  return children$;
+export function observeNodeVanish(client, path) {
+  return observeNodeValue(
+    watcher => pify(client.exists).call(client, path, watcher),
+    true,
+  ).filter(stat => !stat).first();
 }
 
 /**
-* Creates an observable of a node
-* @param {Object} options
-* @param {boolean} [options.watch=false] - Whether to watch the node
-* @param {function} options.accessor - The function that accepts the callback handler
-* and returns a promise/observable for the value we care about.
-*/
-export function observeNodeValue(options) {
-  const { watch = false, accessor } = options;
-  return Observable.defer(() => {
-    let value$ = Observable.of(null);
-    let watcher = null;
-    if (watch) {
-      const emitter = new EventEmitter();
-      value$ = value$.concat(Observable.fromEvent(emitter, changeEventName));
-      watcher = () => emitter.emit(changeEventName);
-    }
-    return value$.flatMap(() => accessor(watcher));
-  });
-}
-
-/**
-* Creates an observable that emits true when a node has been removed
+* Creates an observable that emits the node name and completes when a node
+* is created.
 * @param {ZookeeperClient} client - The node-zookeeper-client instance
-* @param {Object} options
-* @param {string} options.path - The path of the node to remove
-* @param {boolean} [options.watch=false] - Whether to watch the node
-* and returns a promise/observable for the
+* @param {string} path - The path of the node to create
+* @param {CreateMode} mode - The create mode
+* @returns {Observable}
 */
-export function observeRemoveNode(options) {
-  const { client, path, watch = false } = options;
-  return observeNodeValue({
-    client,
-    path,
-    watch,
-    accessor: watcher => pify(client.exists).call(client, path, watcher),
-  }).first(stat => !stat);
-}
-
-/**
-* Creates an observable that emits true when a node has been removed
-* @param {Object} options
-* @param {ZookeeperClient} options.client - The node-zookeeper-client instance
-* @param {string} options.path - The path of the node to remove
-* @param {CreateMode} options.mode - Whether to watch the node
-* and returns a promise/observable for the
-*/
-export function observeCreateNode(options) {
-  const { client, path, mode } = options;
+export function observeCreateNode(client, path, mode) {
   return Observable.defer(() => pify(client.create).call(client, path, null, mode));
+}
+
+/**
+* Creates an observable that emits null and completes when a nod is removed.
+* @param {ZookeeperClient} client - The node-zookeeper-client instance
+* @param {string} path - The path of the node to create
+* @returns {Observable}
+*/
+export function observeRemoveNode(client, path) {
+  return Observable.defer(() => pify(client.remove).call(client, path));
 }
 
 /**
@@ -242,94 +187,80 @@ export function sortClientNodesBySequence(node1, node2) {
 }
 
 /**
-* Creates an observable of client state using the given client factory. when
-* subscribed to, this creates a new client and connects to it. The observable
-* elements are { client, connected, readonly } and reflect the current state
-* of the client. Throws an error in the event of a nonrecoverable state.
-* @param {function} clientFactory - Function that returns a node-zookeeper-client instance
-* @returns {Observable}
-*/
-export function observeClientState(clientFactory) {
-  return Observable.create((observer) => {
-    // create a new client
-    const client = clientFactory();
-
-    // subscribe to the state events and connect
-    client.on('state', (state) => {
-      switch (state.code) {
-        case State.SYNC_CONNECTED.code:
-          observer.next({ client, connected: true, readonly: false });
-          break;
-        case State.CONNECTED_READ_ONLY.code:
-          observer.next({ client, connected: true, readonly: true });
-          break;
-        case State.DISCONNECTED.code:
-          observer.next({ client, connected: false });
-          break;
-        case State.AUTH_FAILED.code:
-          observer.error(new AuthenticationFailedError());
-          break;
-        case State.EXPIRED.code:
-          observer.error(new ExpiredError());
-          break;
-        default:
-          // do nothing on other cases: SASL_AUTHENTICATED
-          break;
-      }
-    });
-
-    // connect to the client
-    client.connect();
-
-    // return a teardown function`
-    return () => {
-      client.removeAllListeners();
-      client.close();
-    };
-  });
-}
-
-/**
 * Returns a function that returns true iff the first of the supplied nodes
 * matches the prefix, i.e. if the client with that prefix is in the "leader"
 * position.
 * @param {string} clientNodePrefix - The client node prefix
 * @returns {function}
 */
-export function leaderSelector(clientNodePrefix) {
-  return nodes => Observable.of(nodes.length && nodes[0].startsWith(clientNodePrefix));
+export function isLeaderNode(clientNodePrefix) {
+  return nodes => nodes.length && nodes[0].startsWith(clientNodePrefix);
 }
 
 /**
-* Generates an observable for an exclusive lock on a resource.
+* A generic state seeking algorithm that subscribes to the provided observable and returns
+* its values as the output, modifying some aspect of global state on each iteration.
+* @param {Observable} state$ - The state observable that is subscribed to on each iteration
+* @param {function} seek - Function that accepts the last state value and returns a promise
+* or observable that modifies the system state. If this result is truthy, the state observable
+* is resubscribed to and the process repeats. Otherwise, the observable completes.
+* @returns {Observable}
+*/
+export function observeSeekState(state$, seek) {
+  // track the last state to use when repeating. ideally we'd avoid this sort
+  // of side-effecting behavior but there doesn't seem to be any other way
+  // to capture this information to use in the repeatWhen call below. at
+  // least all side effects are scoped to this function ...
+  let lastState = null;
+
+  // updates the state
+  const updateState = (state) => { lastState = state; };
+
+  // the predicate the controls the repeat behavior
+  const repeatPredicate = completion$ => completion$
+    .flatMap(() => seek(lastState))
+    .takeWhile(value => !!value);
+
+  // capture the state on each iteration and repeat if appropriate to seek
+  // the desired state
+  return state$.do(updateState).repeatWhen(repeatPredicate);
+}
+
+/**
+* Generates an observable that seeks a particular state with respect to the
+* client nodes at a particular path.
 * @param {Object} options
 * @param {string} options.client - The node-zookeeper-client instance
-* @param {string} options.path - The path on which to get the lock
+* @param {string} options.path - The path on which to observe the clients
+* @param {function} [options.filter] - The filter to apply to the nodes at the path
 * @param {string} options.clientNodePrefix - The client node prefix for this action
-* @param {function} [options.select] - The client id for this action
-* @param {function} options.repeat - The client id for this action
+* @param {function} options.seek - Function to seek the desired state
+* @returns {Observable}
 */
 export function observeSeekClientNodeState(options) {
-  const { client, path, clientNodePrefix, select, repeat } = options;
-  return observeSeekState({
-    client,
-    state$: observeNodeChildren({
-      client,
-      path,
-      sort: nodes => nodes.sort(sortClientNodesBySequence),
-    }),
-    select: select || leaderSelector(clientNodePrefix),
-    repeat: (nodes, result) => {
-      const clientIndex = nodes.findIndex(node => node.startsWith(clientNodePrefix));
-      console.log('abc', clientIndex);
-      if (clientIndex < 0) {
-        return observeCreateNode({
-          client,
-          path: [path, clientNodePrefix].join('/'),
-          mode: CreateMode.EPHEMERAL_SEQUENTIAL,
-        });
-      }
-      return repeat(nodes, result, clientIndex);
-    },
-  });
+  const { client, path, filter, clientNodePrefix, seek } = options;
+
+  // build up the state observable. observe the node children, sorted by sequence
+  // number, and including filter if supplied
+  let state$ = observeNodeChildren(client, path, false);
+  if (filter) {
+    state$ = state$.filter(nodes => nodes.filter(filter));
+  }
+  state$ = state$.map(nodes => nodes.sort(sortClientNodesBySequence));
+
+  // the seek function, which creates the node if it doesn't exist and otherwise
+  // delegates to the supplied seek function
+  // KGW - 1) bypass children on first time, 2) retry?
+  const createNodeAndseek = ([nodes]) => {
+    const clientIndex = nodes.findIndex(node => node.startsWith(clientNodePrefix));
+    console.log('abc', clientIndex);
+    if (clientIndex < 0) {
+      const nodePath = [path, clientNodePrefix].join('/');
+      return observeCreateNode(client, nodePath, CreateMode.EPHEMERAL_SEQUENTIAL);
+    }
+    return seek(nodes, clientIndex);
+  };
+
+  // seek the state
+  return observeSeekState(state$, createNodeAndseek);
 }

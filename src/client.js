@@ -1,15 +1,64 @@
 import { Observable } from 'rxjs';
+import { State } from 'node-zookeeper-client';
+import { AuthenticationFailedError, ExpiredError } from './errors';
 
 import {
   generateClientId,
   getClientNodePrefix,
   observeDelay,
   makeRetryable,
-  observeClientState,
 } from './util';
 
 import { observeExclusiveLock } from './recipes/lock';
 // import { observeOneForAllAction } from './recipes/oneForAll';
+
+/**
+* Creates an observable of client state using the given client factory. when
+* subscribed to, this creates a new client and connects to it. The observable
+* elements are { client, connected, readonly } and reflect the current state
+* of the client. Throws an error in the event of a nonrecoverable state.
+* @param {function} clientFactory - Function that returns a node-zookeeper-client instance
+* @returns {Observable}
+*/
+export function observeClientState(clientFactory) {
+  return Observable.create((observer) => {
+    // create a new client
+    const client = clientFactory();
+
+    // subscribe to the state events and connect
+    client.on('state', (state) => {
+      switch (state.code) {
+        case State.SYNC_CONNECTED.code:
+          observer.next({ client, connected: true, readonly: false });
+          break;
+        case State.CONNECTED_READ_ONLY.code:
+          observer.next({ client, connected: true, readonly: true });
+          break;
+        case State.DISCONNECTED.code:
+          observer.next({ client, connected: false });
+          break;
+        case State.AUTH_FAILED.code:
+          observer.error(new AuthenticationFailedError());
+          break;
+        case State.EXPIRED.code:
+          observer.error(new ExpiredError());
+          break;
+        default:
+          // do nothing on other cases: SASL_AUTHENTICATED
+          break;
+      }
+    });
+
+    // connect to the client
+    client.connect();
+
+    // return a teardown function`
+    return () => {
+      client.removeAllListeners();
+      client.close();
+    };
+  });
+}
 
 /**
 * The client object for recipes
