@@ -4,6 +4,8 @@
 
 This module provides implementations of some Zookeeper algorithms, including some standard recipes as described [here](https://zookeeper.apache.org/doc/trunk/recipes.html).
 
+This library uses [node-zookeeper-client](https://github.com/alexguan/node-zookeeper-client) to interface with Zookeeper, and it uses [RxJS 5 Reactive Extensions for Javascript](https://github.com/ReactiveX/rxjs) to model the various algorithms.
+
 API [documentation](https://galenwarren.github.io/node-zookeeper-algorithms/)
 
 ## Installation
@@ -116,7 +118,7 @@ A lock acquired is this way can also supply a callback to be invoked if the lock
 const unlock = await algorithms.exclusiveLock({
   path: '/path/to/lock',
   key: '123',
-  lost: () => {
+  onLost: () => {
     // called if lock is lost ...
   },
 );
